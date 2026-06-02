@@ -1,0 +1,309 @@
+<!DOCTYPE html>
+<html lang="cs">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Kooky Nuts — Prezentace 2026</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    background: #0a0a0a;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    overflow: hidden;
+    width: 100vw;
+    height: 100vh;
+    user-select: none;
+  }
+
+  #slideshow {
+    width: 100%;
+    height: 100%;
+    position: relative;
+  }
+
+  .slide {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    opacity: 0;
+    transition: opacity 0.4s ease;
+    pointer-events: none;
+  }
+
+  .slide.active {
+    opacity: 1;
+    pointer-events: all;
+  }
+
+  .slide img {
+    max-width: 100%;
+    max-height: 100%;
+    width: auto;
+    height: auto;
+    object-fit: contain;
+    display: block;
+  }
+
+  /* Navigation arrows */
+  .nav-btn {
+    position: fixed;
+    top: 50%;
+    transform: translateY(-50%);
+    background: rgba(233, 30, 140, 0.15);
+    border: 2px solid rgba(233, 30, 140, 0.4);
+    color: #E91E8C;
+    width: 52px;
+    height: 72px;
+    border-radius: 8px;
+    font-size: 28px;
+    cursor: pointer;
+    z-index: 100;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    opacity: 0;
+    transition: opacity 0.2s, background 0.2s;
+  }
+
+  body:hover .nav-btn { opacity: 1; }
+  .nav-btn:hover { background: rgba(233, 30, 140, 0.35); }
+
+  #prev { left: 12px; }
+  #next { right: 12px; }
+
+  /* Progress bar */
+  #progress-bar {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    height: 3px;
+    background: #E91E8C;
+    transition: width 0.3s ease;
+    z-index: 100;
+  }
+
+  /* Counter */
+  #counter {
+    position: fixed;
+    bottom: 14px;
+    right: 18px;
+    color: rgba(255,255,255,0.5);
+    font-size: 13px;
+    font-weight: 600;
+    letter-spacing: 1px;
+    z-index: 100;
+    opacity: 0;
+    transition: opacity 0.2s;
+  }
+
+  body:hover #counter { opacity: 1; }
+
+  /* Dots */
+  #dots {
+    position: fixed;
+    bottom: 12px;
+    left: 50%;
+    transform: translateX(-50%);
+    display: flex;
+    gap: 5px;
+    z-index: 100;
+    opacity: 0;
+    transition: opacity 0.2s;
+    flex-wrap: wrap;
+    max-width: 80vw;
+    justify-content: center;
+  }
+
+  body:hover #dots { opacity: 1; }
+
+  .dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: rgba(255,255,255,0.25);
+    cursor: pointer;
+    transition: background 0.2s, transform 0.2s;
+  }
+
+  .dot.active {
+    background: #E91E8C;
+    transform: scale(1.4);
+  }
+
+  /* Loading */
+  #loader {
+    position: fixed;
+    inset: 0;
+    background: #0a0a0a;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    z-index: 200;
+    transition: opacity 0.5s;
+  }
+
+  #loader .logo-text {
+    color: #F5E642;
+    font-size: 42px;
+    font-weight: 900;
+    letter-spacing: 4px;
+    text-transform: uppercase;
+  }
+
+  #loader .logo-text span { color: #E91E8C; }
+
+  #loader .tagline {
+    color: rgba(255,255,255,0.4);
+    font-size: 13px;
+    margin-top: 8px;
+    letter-spacing: 2px;
+  }
+
+  .loading-bar {
+    width: 200px;
+    height: 2px;
+    background: rgba(255,255,255,0.1);
+    border-radius: 2px;
+    margin-top: 28px;
+    overflow: hidden;
+  }
+
+  .loading-fill {
+    height: 100%;
+    background: #E91E8C;
+    width: 0%;
+    transition: width 0.1s;
+    border-radius: 2px;
+  }
+
+  /* Keyboard hint */
+  #hint {
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    color: rgba(255,255,255,0.15);
+    font-size: 12px;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    pointer-events: none;
+    z-index: 50;
+    opacity: 0;
+    transition: opacity 1s;
+  }
+
+  #hint.show { opacity: 1; }
+</style>
+</head>
+<body>
+
+<div id="loader">
+  <div class="logo-text">KOOKY<span>NUTS</span></div>
+  <div class="tagline">A taste that breaks you out of your routine.</div>
+  <div class="loading-bar"><div class="loading-fill" id="loading-fill"></div></div>
+</div>
+
+<div id="slideshow"></div>
+
+<button class="nav-btn" id="prev" onclick="go(-1)">&#8592;</button>
+<button class="nav-btn" id="next" onclick="go(1)">&#8594;</button>
+
+<div id="progress-bar"></div>
+<div id="counter"></div>
+<div id="dots"></div>
+
+<script>
+const TOTAL = 36;
+const BASE = 'slides/';
+let current = 0;
+let slides = [];
+let loaded = 0;
+
+const slideshow = document.getElementById('slideshow');
+const dotsEl = document.getElementById('dots');
+const loaderEl = document.getElementById('loader');
+const fillEl = document.getElementById('loading-fill');
+
+// Preload all slides
+for (let i = 1; i <= TOTAL; i++) {
+  const num = String(i).padStart(2, '0');
+  const div = document.createElement('div');
+  div.className = 'slide';
+  div.dataset.index = i - 1;
+
+  const img = document.createElement('img');
+  img.src = BASE + 'slide_' + num + '.jpg';
+  img.alt = 'Slide ' + i;
+  img.onload = () => {
+    loaded++;
+    fillEl.style.width = (loaded / TOTAL * 100) + '%';
+    if (loaded === TOTAL) {
+      setTimeout(() => {
+        loaderEl.style.opacity = '0';
+        setTimeout(() => loaderEl.style.display = 'none', 500);
+      }, 300);
+    }
+  };
+
+  div.appendChild(img);
+  slideshow.appendChild(div);
+  slides.push(div);
+
+  // Dot
+  const dot = document.createElement('div');
+  dot.className = 'dot' + (i === 1 ? ' active' : '');
+  dot.dataset.index = i - 1;
+  dot.onclick = () => goTo(parseInt(dot.dataset.index));
+  dotsEl.appendChild(dot);
+}
+
+function updateUI() {
+  slides.forEach((s, i) => s.classList.toggle('active', i === current));
+  document.querySelectorAll('.dot').forEach((d, i) => d.classList.toggle('active', i === current));
+  document.getElementById('counter').textContent = (current + 1) + ' / ' + TOTAL;
+  document.getElementById('progress-bar').style.width = ((current + 1) / TOTAL * 100) + '%';
+}
+
+function go(dir) {
+  current = (current + dir + TOTAL) % TOTAL;
+  updateUI();
+}
+
+function goTo(idx) {
+  current = idx;
+  updateUI();
+}
+
+// Init
+updateUI();
+
+// Keyboard
+document.addEventListener('keydown', e => {
+  if (e.key === 'ArrowRight' || e.key === ' ') go(1);
+  if (e.key === 'ArrowLeft') go(-1);
+  if (e.key === 'Home') goTo(0);
+  if (e.key === 'End') goTo(TOTAL - 1);
+});
+
+// Touch swipe
+let touchX = null;
+document.addEventListener('touchstart', e => touchX = e.touches[0].clientX);
+document.addEventListener('touchend', e => {
+  if (touchX === null) return;
+  const dx = e.changedTouches[0].clientX - touchX;
+  if (Math.abs(dx) > 40) go(dx < 0 ? 1 : -1);
+  touchX = null;
+});
+
+// Click anywhere (not on buttons)
+slideshow.addEventListener('click', e => {
+  const half = window.innerWidth / 2;
+  go(e.clientX > half ? 1 : -1);
+});
+</script>
+</body>
+</html>
